@@ -111,6 +111,8 @@ func TestNewEventEngine(t *testing.T) {
 }
 
 func TestNewEventEngineWithMQ(t *testing.T) {
+	t.Skipf("need redis")
+
 	ctx := context.Background()
 
 	rdbMQ, err := redis.New()
@@ -185,7 +187,6 @@ func TestNewEventEngineWithMQ(t *testing.T) {
 		require.Equal(t, 4, int(atomic.LoadInt32(&count)))
 		atomic.StoreInt32(&count, 0)
 	}
-
 }
 
 func BenchmarkNewEventEngine(b *testing.B) {
