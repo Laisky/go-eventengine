@@ -8,24 +8,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Laisky/go-eventengine/internal/consts"
 	"github.com/Laisky/go-eventengine/mq"
-	"github.com/Laisky/zap/zapcore"
-
+	"github.com/Laisky/go-eventengine/types"
 	gutils "github.com/Laisky/go-utils"
 	"github.com/Laisky/zap"
+	"github.com/Laisky/zap/zapcore"
 	"github.com/pkg/errors"
 )
 
 const (
-	defaultEventEngineNFork         int = 2
-	defaultEventEngineMsgBufferSize int = 0
+	defaultNFork         int = 2
+	defaultMsgBufferSize int = 0
 )
 
-// EventHandler function to handle event
-type EventHandler func(*consts.Event) error
+// Handler function to handle event
+type Handler func(*types.Event) error
 
-// EventEngine event driven engine
+// Type event driven engine
 //
 // Usage
 //
@@ -34,7 +33,7 @@ type EventHandler func(*consts.Event) error
 //   1. create an engine by `NewEventEngine`
 //   2. register handlers with specified event type by `engine.Register`
 //   3. produce event to trigger handlers by `engine.Publish`
-type EventEngine struct {
+type Type struct {
 	*eventStoreManagerOpt
 
 	// topic2hs map[topic]*sync.Map[handlerID]handler
@@ -45,9 +44,9 @@ type EventEngine struct {
 	// mq
 	// -------------------------------------
 
-	mqAddTopic     chan consts.EventTopic
-	mqRemoveTopic  chan consts.EventTopic
-	mqTopic2Cancel map[consts.EventTopic]context.CancelFunc
+	mqAddTopic     chan types.EventTopic
+	mqRemoveTopic  chan types.EventTopic
+	mqTopic2Cancel map[types.EventTopic]context.CancelFunc
 }
 
 type eventStoreManagerOpt struct {
@@ -58,13 +57,13 @@ type eventStoreManagerOpt struct {
 	mq            mq.Interface
 }
 
-// EventEngineOptFunc options for EventEngine
-type EventEngineOptFunc func(*eventStoreManagerOpt) error
+// OptFunc options for EventEngine
+type OptFunc func(*eventStoreManagerOpt) error
 
-// WithEventEngineNFork set nfork of event store
+// WithNFork set nfork of event store
 //
 // default to 2
-func WithEventEngineNFork(nfork int) EventEngineOptFunc {
+func WithNFork(nfork int) OptFunc {
 	return func(opt *eventStoreManagerOpt) error {
 		if nfork <= 0 {
 			return errors.Errorf("nfork must > 0")
@@ -75,10 +74,10 @@ func WithEventEngineNFork(nfork int) EventEngineOptFunc {
 	}
 }
 
-// WithEventEngineChanBuffer set msg buffer size of event store
+// WithChanBuffer set msg buffer size of event store
 //
 // default to 1
-func WithEventEngineChanBuffer(msgBufferSize int) EventEngineOptFunc {
+func WithChanBuffer(msgBufferSize int) OptFunc {
 	return func(opt *eventStoreManagerOpt) error {
 		if msgBufferSize < 0 {
 			return errors.Errorf("msgBufferSize must >= 0")
@@ -89,10 +88,10 @@ func WithEventEngineChanBuffer(msgBufferSize int) EventEngineOptFunc {
 	}
 }
 
-// WithEventEngineLogger set event store's logger
+// WithLogger set event store's logger
 //
 // default to gutils' internal logger
-func WithEventEngineLogger(logger *gutils.LoggerType) EventEngineOptFunc {
+func WithLogger(logger *gutils.LoggerType) OptFunc {
 	return func(opt *eventStoreManagerOpt) error {
 		if logger == nil {
 			return errors.Errorf("logger is nil")
@@ -103,10 +102,10 @@ func WithEventEngineLogger(logger *gutils.LoggerType) EventEngineOptFunc {
 	}
 }
 
-// WithEventEngineSuppressPanic set whether suppress event handler's panic
+// WithSuppressPanic set whether suppress event handler's panic
 //
 // default to false
-func WithEventEngineSuppressPanic(suppressPanic bool) EventEngineOptFunc {
+func WithSuppressPanic(suppressPanic bool) OptFunc {
 	return func(opt *eventStoreManagerOpt) error {
 		opt.suppressPanic = suppressPanic
 		return nil
@@ -116,7 +115,7 @@ func WithEventEngineSuppressPanic(suppressPanic bool) EventEngineOptFunc {
 // WithMQ set whether suppress event handler's panic
 //
 // default to null
-func WithMQ(mq mq.Interface) EventEngineOptFunc {
+func WithMQ(mq mq.Interface) OptFunc {
 	return func(opt *eventStoreManagerOpt) error {
 		if mq == nil {
 			return errors.Errorf("mq is nil")
@@ -127,18 +126,18 @@ func WithMQ(mq mq.Interface) EventEngineOptFunc {
 	}
 }
 
-// NewEventEngine new event store manager
+// New new event store manager
 //
 // Args:
 //   * ctx:
-//   * WithEventEngineNFork: n goroutines to run handlers in parallel
-//   * WithEventEngineChanBuffer: length of channel to receive published event
-//   * WithEventEngineLogger: internal logger in event engine
-//   * WithEventEngineSuppressPanic: if is true, will not raise panic when running handler
-func NewEventEngine(ctx context.Context, opts ...EventEngineOptFunc) (Interface, error) {
+//   * WithNFork: n goroutines to run handlers in parallel
+//   * WithChanBuffer: length of channel to receive published event
+//   * WithLogger: internal logger in event engine
+//   * WithSuppressPanic: if is true, will not raise panic when running handler
+func New(ctx context.Context, opts ...OptFunc) (Interface, error) {
 	opt := &eventStoreManagerOpt{
-		msgBufferSize: defaultEventEngineMsgBufferSize,
-		nfork:         defaultEventEngineNFork,
+		msgBufferSize: defaultMsgBufferSize,
+		nfork:         defaultNFork,
 		logger:        gutils.Logger.Named("evt-store-" + gutils.RandomStringWithLength(6)),
 	}
 	for _, optf := range opts {
@@ -147,14 +146,14 @@ func NewEventEngine(ctx context.Context, opts ...EventEngineOptFunc) (Interface,
 		}
 	}
 
-	e := &EventEngine{
+	e := &Type{
 		eventStoreManagerOpt: opt,
 		topic2hs:             &sync.Map{},
 		taskChan:             make(chan *eventRunChanItem, opt.msgBufferSize),
 
-		mqAddTopic:     make(chan consts.EventTopic),
-		mqRemoveTopic:  make(chan consts.EventTopic),
-		mqTopic2Cancel: map[consts.EventTopic]context.CancelFunc{},
+		mqAddTopic:     make(chan types.EventTopic),
+		mqRemoveTopic:  make(chan types.EventTopic),
+		mqTopic2Cancel: map[types.EventTopic]context.CancelFunc{},
 	}
 
 	e.runHandlerRunner(ctx, opt.nfork)
@@ -171,7 +170,7 @@ func NewEventEngine(ctx context.Context, opts ...EventEngineOptFunc) (Interface,
 	return e, nil
 }
 
-func runHandlerWithoutPanic(h EventHandler, evt *consts.Event) (err error) {
+func runHandlerWithoutPanic(h Handler, evt *types.Event) (err error) {
 	defer func() {
 		if erri := recover(); erri != nil {
 			err = errors.Errorf("run event handler with evt `%s`: %+v", evt.Topic, erri)
@@ -183,12 +182,12 @@ func runHandlerWithoutPanic(h EventHandler, evt *consts.Event) (err error) {
 }
 
 type eventRunChanItem struct {
-	h   EventHandler
-	hid consts.HandlerID
-	evt *consts.Event
+	h   Handler
+	hid types.HandlerID
+	evt *types.Event
 }
 
-func (e *EventEngine) runHandlerRunner(ctx context.Context, nfork int) {
+func (e *Type) runHandlerRunner(ctx context.Context, nfork int) {
 	for i := 0; i < nfork; i++ {
 		logger := e.logger.Named(strconv.Itoa(i))
 		go func() {
@@ -223,11 +222,11 @@ func (e *EventEngine) runHandlerRunner(ctx context.Context, nfork int) {
 }
 
 const (
-	handlerIDput2mq consts.HandlerID = "@put2mq"
+	handlerIDput2mq types.HandlerID = "@put2mq"
 )
 
 // put2mq put event into mq
-func (e *EventEngine) put2mq(evt *consts.Event) error {
+func (e *Type) put2mq(evt *types.Event) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := e.mq.Put(ctx, evt); err != nil {
@@ -238,7 +237,7 @@ func (e *EventEngine) put2mq(evt *consts.Event) error {
 }
 
 // runMqListener fetch event from MQ
-func (e *EventEngine) runMQListener(ctx context.Context) {
+func (e *Type) runMQListener(ctx context.Context) {
 	if e.mq == nil {
 		return
 	}
@@ -303,7 +302,7 @@ func (e *EventEngine) runMQListener(ctx context.Context) {
 }
 
 // Register register handler
-func (e *EventEngine) Register(topic consts.EventTopic, handler EventHandler) {
+func (e *Type) Register(topic types.EventTopic, handler Handler) {
 	handlerID := GetHandlerID(handler)
 	hs := &sync.Map{}
 	actual, _ := e.topic2hs.LoadOrStore(topic, hs)
@@ -334,7 +333,7 @@ func (e *EventEngine) Register(topic consts.EventTopic, handler EventHandler) {
 }
 
 // UnRegister unregister handler
-func (e *EventEngine) UnRegister(topic consts.EventTopic, handler EventHandler) {
+func (e *Type) UnRegister(topic types.EventTopic, handler Handler) {
 	handlerID := GetHandlerID(handler)
 	if hsi, _ := e.topic2hs.Load(topic); hsi != nil {
 		hsi.(*sync.Map).Delete(handlerID)
@@ -349,7 +348,7 @@ func (e *EventEngine) UnRegister(topic consts.EventTopic, handler EventHandler) 
 		zap.String("handler", handlerID.String()))
 }
 
-func (e *EventEngine) triggerHandler(evt *consts.Event) {
+func (e *Type) triggerHandler(evt *types.Event) {
 	hsi, ok := e.topic2hs.Load(evt.Topic)
 	if !ok || hsi == nil {
 		return
@@ -357,8 +356,8 @@ func (e *EventEngine) triggerHandler(evt *consts.Event) {
 
 	hsi.(*sync.Map).Range(func(hid, h interface{}) bool {
 		e.taskChan <- &eventRunChanItem{
-			h:   h.(EventHandler),
-			hid: hid.(consts.HandlerID),
+			h:   h.(Handler),
+			hid: hid.(types.HandlerID),
 			evt: evt,
 		}
 
@@ -367,7 +366,7 @@ func (e *EventEngine) triggerHandler(evt *consts.Event) {
 }
 
 // Publish publish new event
-func (e *EventEngine) Publish(ctx context.Context, evt *consts.Event) {
+func (e *Type) Publish(ctx context.Context, evt *types.Event) {
 	e.logger.Debug("publish event", zap.String("event", evt.Topic.String()))
 	evt.Time = gutils.Clock.GetUTCNow()
 	evt.Stack = string(debug.Stack())

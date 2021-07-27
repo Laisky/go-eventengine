@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Laisky/go-eventengine/internal/consts"
+	"github.com/Laisky/go-eventengine/types"
 	gredis "github.com/Laisky/go-redis"
 	gutils "github.com/Laisky/go-utils"
 	"github.com/go-redis/redis/v8"
@@ -93,12 +94,12 @@ func (t *Type) Name() string {
 }
 
 // RDBKey generate redis key by topic
-func (t *Type) RDBKey(topic consts.EventTopic) string {
+func (t *Type) RDBKey(topic types.EventTopic) string {
 	return t.rdbKeyPrefix + consts.RedisKeyQueue + topic.String() + "/"
 }
 
 // Put put event into mq
-func (t *Type) Put(ctx context.Context, evt *consts.Event) error {
+func (t *Type) Put(ctx context.Context, evt *types.Event) error {
 	msg, err := gutils.JSON.MarshalToString(evt)
 	if err != nil {
 		return err
@@ -108,8 +109,8 @@ func (t *Type) Put(ctx context.Context, evt *consts.Event) error {
 }
 
 // Get get evt from mq
-func (t *Type) Get(ctx context.Context, topic consts.EventTopic) (<-chan *consts.Event, <-chan error) {
-	eventChan := make(chan *consts.Event)
+func (t *Type) Get(ctx context.Context, topic types.EventTopic) (<-chan *types.Event, <-chan error) {
+	eventChan := make(chan *types.Event)
 	errChan := make(chan error)
 	go func() {
 		defer close(eventChan)
@@ -127,7 +128,7 @@ func (t *Type) Get(ctx context.Context, topic consts.EventTopic) (<-chan *consts
 				return
 			}
 
-			evt := new(consts.Event)
+			evt := new(types.Event)
 			if err = gutils.JSON.UnmarshalFromString(v, evt); err != nil {
 				errChan <- err
 				return
@@ -142,6 +143,6 @@ func (t *Type) Get(ctx context.Context, topic consts.EventTopic) (<-chan *consts
 }
 
 // FIXME: not implement
-func (t *Type) Commit(ctx context.Context, evt *consts.Event) error {
+func (t *Type) Commit(ctx context.Context, evt *types.Event) error {
 	return errors.New("NotImplement")
 }

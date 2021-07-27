@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Laisky/go-eventengine/internal/consts"
 	"github.com/Laisky/go-eventengine/mq/redis"
+	"github.com/Laisky/go-eventengine/types"
 	gutils "github.com/Laisky/go-utils"
 	"github.com/Laisky/zap"
 	"github.com/stretchr/testify/require"
@@ -16,33 +16,33 @@ import (
 
 func ExampleEventEngine() {
 	ctx := context.Background()
-	evtstore, err := NewEventEngine(ctx,
-		WithEventEngineChanBuffer(1),
-		WithEventEngineNFork(2),
-		WithEventEngineSuppressPanic(false),
+	evtstore, err := New(ctx,
+		WithChanBuffer(1),
+		WithNFork(2),
+		WithSuppressPanic(false),
 	)
 	if err == nil {
 		gutils.Logger.Panic("new evt engine", zap.Error(err))
 	}
 
 	var (
-		topic1 consts.EventTopic = "t1"
-		topic2 consts.EventTopic = "t2"
+		topic1 types.EventTopic = "t1"
+		topic2 types.EventTopic = "t2"
 	)
-	evt1 := &consts.Event{
+	evt1 := &types.Event{
 		Topic: topic1,
-		Meta: consts.EventMeta{
+		Meta: types.EventMeta{
 			"name": "yo",
 		},
 	}
-	evt2 := &consts.Event{
+	evt2 := &types.Event{
 		Topic: topic2,
-		Meta: consts.EventMeta{
+		Meta: types.EventMeta{
 			"name": "yo2",
 		},
 	}
 
-	handler := func(evt *consts.Event) error {
+	handler := func(evt *types.Event) error {
 		fmt.Printf("got event %s: %v\n", evt.Topic, evt.Meta)
 		return nil
 	}
@@ -54,37 +54,36 @@ func ExampleEventEngine() {
 	evtstore.UnRegister(topic1, handler)
 	evtstore.Publish(ctx, evt1) // nothing print
 	evtstore.Publish(ctx, evt2) // nothing print
-
 }
 
 func TestNewEventEngine(t *testing.T) {
 	ctx := context.Background()
-	evtstore, err := NewEventEngine(ctx)
+	evtstore, err := New(ctx)
 	require.NoError(t, err)
 
 	var (
-		topic1 consts.EventTopic = "t1"
-		topic2 consts.EventTopic = "t2"
+		topic1 types.EventTopic = "t1"
+		topic2 types.EventTopic = "t2"
 	)
-	newEvt1 := func() *consts.Event {
-		return &consts.Event{
+	newEvt1 := func() *types.Event {
+		return &types.Event{
 			Topic: topic1,
-			Meta: consts.EventMeta{
+			Meta: types.EventMeta{
 				"name": "yo",
 			},
 		}
 	}
-	newEvt2 := func() *consts.Event {
-		return &consts.Event{
+	newEvt2 := func() *types.Event {
+		return &types.Event{
 			Topic: topic2,
-			Meta: consts.EventMeta{
+			Meta: types.EventMeta{
 				"name": "yo2",
 			},
 		}
 	}
 
 	var count int32
-	handler := func(evt *consts.Event) error {
+	handler := func(evt *types.Event) error {
 		t.Logf("got event %s: %+v", evt.Topic, evt.Meta)
 		atomic.AddInt32(&count, 1)
 		return nil
@@ -118,26 +117,26 @@ func TestNewEventEngineWithMQ(t *testing.T) {
 	rdbMQ, err := redis.New()
 	require.NoError(t, err)
 
-	evtstore, err := NewEventEngine(ctx,
+	evtstore, err := New(ctx,
 		WithMQ(rdbMQ))
 	require.NoError(t, err)
 
 	var (
-		topic1 consts.EventTopic = "t1"
-		topic2 consts.EventTopic = "t2"
+		topic1 types.EventTopic = "t1"
+		topic2 types.EventTopic = "t2"
 	)
-	newEvt1 := func() *consts.Event {
-		return &consts.Event{
+	newEvt1 := func() *types.Event {
+		return &types.Event{
 			Topic: topic1,
-			Meta: consts.EventMeta{
+			Meta: types.EventMeta{
 				"name": "yo",
 			},
 		}
 	}
-	newEvt2 := func() *consts.Event {
-		return &consts.Event{
+	newEvt2 := func() *types.Event {
+		return &types.Event{
 			Topic: topic2,
-			Meta: consts.EventMeta{
+			Meta: types.EventMeta{
 				"name": "yo2",
 			},
 		}
@@ -145,7 +144,7 @@ func TestNewEventEngineWithMQ(t *testing.T) {
 
 	var target, count int32
 	closeCh := make(chan struct{})
-	handler := func(evt *consts.Event) error {
+	handler := func(evt *types.Event) error {
 		gutils.Logger.Info("handle event",
 			zap.String("topic", evt.Topic.String()),
 			zap.Any("meta", evt.Meta),
@@ -191,29 +190,29 @@ func TestNewEventEngineWithMQ(t *testing.T) {
 
 func BenchmarkNewEventEngine(b *testing.B) {
 	ctx := context.Background()
-	evtstore, err := NewEventEngine(ctx)
+	evtstore, err := New(ctx)
 	if err != nil {
 		b.Fatalf("%+v", err)
 	}
 
 	var (
-		topic1 consts.EventTopic = "t1"
-		topic2 consts.EventTopic = "t2"
+		topic1 types.EventTopic = "t1"
+		topic2 types.EventTopic = "t2"
 	)
-	evt1 := &consts.Event{
+	evt1 := &types.Event{
 		Topic: topic1,
-		Meta: consts.EventMeta{
+		Meta: types.EventMeta{
 			"name": "yo",
 		},
 	}
-	evt2 := &consts.Event{
+	evt2 := &types.Event{
 		Topic: topic2,
-		Meta: consts.EventMeta{
+		Meta: types.EventMeta{
 			"name": "yo2",
 		},
 	}
 
-	handler := func(evt *consts.Event) error {
+	handler := func(evt *types.Event) error {
 		b.Logf("got event %s: %+v", evt.Topic, evt.Meta)
 		return nil
 	}

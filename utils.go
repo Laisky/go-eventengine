@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Laisky/go-eventengine/internal/consts"
+	"github.com/Laisky/go-eventengine/types"
 )
 
 // GetHandlerID calculate handler func's address as id
-func GetHandlerID(handler EventHandler) consts.HandlerID {
-	return consts.HandlerID(GetFuncAddress(handler))
+func GetHandlerID(handler Handler) types.HandlerID {
+	return types.HandlerID(GetFuncAddress(handler))
 }
 
 // GetFuncAddress get address of func
