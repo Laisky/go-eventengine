@@ -1,3 +1,4 @@
+// Package redis mq base on redis
 package redis
 
 import (

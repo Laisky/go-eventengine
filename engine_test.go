@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Laisky/go-eventengine/mq/redis"
+	"github.com/Laisky/go-eventengine/mq"
 	"github.com/Laisky/go-eventengine/types"
 	gutils "github.com/Laisky/go-utils"
 	"github.com/Laisky/zap"
@@ -110,11 +110,9 @@ func TestNewEventEngine(t *testing.T) {
 }
 
 func TestNewEventEngineWithMQ(t *testing.T) {
-	t.Skipf("need redis")
-
 	ctx := context.Background()
 
-	rdbMQ, err := redis.New()
+	rdbMQ, err := mq.WithMockMQ()
 	require.NoError(t, err)
 
 	evtstore, err := New(ctx,
