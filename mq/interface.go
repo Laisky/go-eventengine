@@ -4,11 +4,6 @@ import (
 	"context"
 
 	"github.com/Laisky/go-eventengine/internal/consts"
-	"github.com/Laisky/go-eventengine/mq/redis"
-)
-
-var (
-	_ Interface = new(redis.Type)
 )
 
 // Interface is MQ backend for event engine

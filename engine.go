@@ -10,10 +10,9 @@ import (
 
 	"github.com/Laisky/go-eventengine/internal/consts"
 	"github.com/Laisky/go-eventengine/mq"
-	"github.com/Laisky/zap/zapcore"
-
 	gutils "github.com/Laisky/go-utils"
 	"github.com/Laisky/zap"
+	"github.com/Laisky/zap/zapcore"
 	"github.com/pkg/errors"
 )
 
