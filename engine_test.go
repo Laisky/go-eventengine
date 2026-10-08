@@ -14,14 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ExampleEventEngine() {
+func ExampleNew() {
 	ctx := context.Background()
 	evtstore, err := New(ctx,
 		WithChanBuffer(1),
 		WithNFork(2),
 		WithSuppressPanic(false),
 	)
-	if err == nil {
+	if err != nil {
 		gutils.Logger.Panic("new evt engine", zap.Error(err))
 	}
 
@@ -48,7 +48,7 @@ func ExampleEventEngine() {
 	}
 
 	evtstore.Register(topic1, handler)
-	evtstore.Publish(ctx, evt1) // Output: got event t1: map[name]yo
+	evtstore.Publish(ctx, evt1) // registered topic invokes its handler
 	evtstore.Publish(ctx, evt2) // nothing print
 
 	evtstore.UnRegister(topic1, handler)
