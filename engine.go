@@ -26,13 +26,13 @@ type Handler func(*types.Event) error
 
 // Type event driven engine
 //
-// Usage
+// # Usage
 //
 // you -> produce event -> trigger multiply handlers
 //
-//   1. create an engine by `NewEventEngine`
-//   2. register handlers with specified event type by `engine.Register`
-//   3. produce event to trigger handlers by `engine.Publish`
+//  1. create an engine by `NewEventEngine`
+//  2. register handlers with specified event type by `engine.Register`
+//  3. produce event to trigger handlers by `engine.Publish`
 type Type struct {
 	*eventStoreManagerOpt
 
@@ -52,7 +52,7 @@ type Type struct {
 type eventStoreManagerOpt struct {
 	msgBufferSize int
 	nfork         int
-	logger        *gutils.LoggerType
+	logger        gutils.LoggerItf
 	suppressPanic bool
 	mq            mq.Interface
 }
@@ -91,8 +91,11 @@ func WithChanBuffer(msgBufferSize int) OptFunc {
 // WithLogger set event store's logger
 //
 // default to gutils' internal logger
-func WithLogger(logger *gutils.LoggerType) OptFunc {
+func WithLogger(logger gutils.LoggerItf) OptFunc {
 	return func(opt *eventStoreManagerOpt) error {
+		if concrete, ok := logger.(*gutils.LoggerType); ok && concrete == nil {
+			return errors.Errorf("logger is nil")
+		}
 		if logger == nil {
 			return errors.Errorf("logger is nil")
 		}
@@ -129,11 +132,11 @@ func WithMQ(mq mq.Interface) OptFunc {
 // New new event store manager
 //
 // Args:
-//   * ctx:
-//   * WithNFork: n goroutines to run handlers in parallel
-//   * WithChanBuffer: length of channel to receive published event
-//   * WithLogger: internal logger in event engine
-//   * WithSuppressPanic: if is true, will not raise panic when running handler
+//   - ctx:
+//   - WithNFork: n goroutines to run handlers in parallel
+//   - WithChanBuffer: length of channel to receive published event
+//   - WithLogger: internal logger in event engine
+//   - WithSuppressPanic: if is true, will not raise panic when running handler
 func New(ctx context.Context, opts ...OptFunc) (Interface, error) {
 	opt := &eventStoreManagerOpt{
 		msgBufferSize: defaultMsgBufferSize,

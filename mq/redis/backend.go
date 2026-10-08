@@ -18,7 +18,7 @@ import (
 type Type struct {
 	rdbKeyPrefix string
 	rdb          *gredis.Utils
-	logger       *gutils.LoggerType
+	logger       gutils.LoggerItf
 }
 
 // OptFunc optional arguments
@@ -37,8 +37,11 @@ func WithRDBCli(rdb *redis.Client) OptFunc {
 }
 
 // WithLogger set internal logger
-func WithLogger(l *gutils.LoggerType) OptFunc {
+func WithLogger(l gutils.LoggerItf) OptFunc {
 	return func(t *Type) error {
+		if concrete, ok := l.(*gutils.LoggerType); ok && concrete == nil {
+			return errors.Errorf("logger is nil")
+		}
 		if l == nil {
 			return errors.Errorf("logger is nil")
 		}
